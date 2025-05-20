@@ -1,31 +1,39 @@
+import os
 import cv2
+import json
 import mediapipe as mp
 import pandas as pd
-import json
-import os
+import numpy as np
 
-# MediaPipe
+# === Parámetros ===
+NUM_FRAMES = 20
+FEATURES_PER_FRAME = 63
+csv_path = "C:/Users/Alberto/Documents/Master/ASLproject/dataset/image_word.csv"         # Cambia si es diferente
+videos_path = "C:/Users/Alberto/Documents/Master/ASLproject/dataset/videos"           # Carpeta con los .mp4
+output_path = "landmarks_temporal_dataset.json"
+
+# === Cargar CSV ===
+df = pd.read_csv(csv_path, dtype={'video_id': str})
+
+# === Inicializar MediaPipe ===
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1)
-landmark_data = []
 
-# Leer CSV con id como texto
-df = pd.read_csv('C:/Users/Alberto/Documents/Master/ASLproject/dataset/image_word.csv', dtype={'video_id': str})
-video_base_path = 'C:/Users/Alberto/Documents/Master/ASLproject/dataset/videos'  # asegúrate de que tenga / al final si concatenas
+temporal_dataset = []
 
-for index, row in df.iterrows():
-    video_id = row['video_id']  # ya es texto, con ceros incluidos
+for _, row in df.iterrows():
+    video_id = row['video_id']
     word_id = int(row['word_id'])
-    video_path = os.path.join(video_base_path, f"{video_id}.mp4")
+    video_file = os.path.join(videos_path, f"{video_id}.mp4")
 
-    print(f"Procesando: {video_path}")
-    cap = cv2.VideoCapture(video_path)
-
+    cap = cv2.VideoCapture(video_file)
     if not cap.isOpened():
-        print(f"❌ No se pudo abrir: {video_path}")
+        print(f"❌ No se pudo abrir: {video_file}")
         continue
 
-    while True:
+    sequence = []
+
+    while len(sequence) < NUM_FRAMES and cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
@@ -38,15 +46,28 @@ for index, row in df.iterrows():
                 vector = []
                 for lm in hand_landmarks.landmark:
                     vector.extend([lm.x, lm.y, lm.z])
-                landmark_data.append({
-                    "features": vector,
-                    "label": word_id
-                })
+                sequence.append(vector)
+                break  # Solo la primera mano
 
     cap.release()
 
-# Guardar
-with open("landmarks_dataset.json", "w") as f:
-    json.dump(landmark_data, f)
+    if len(sequence) == 0:
+        continue
 
-print("✅ Extracción completada.")
+    # Rellenar si tiene menos de NUM_FRAMES
+    if len(sequence) < NUM_FRAMES:
+        padding = [[0.0] * FEATURES_PER_FRAME] * (NUM_FRAMES - len(sequence))
+        sequence.extend(padding)
+    else:
+        sequence = sequence[:NUM_FRAMES]
+
+    temporal_dataset.append({
+        "sequence": sequence,
+        "label": word_id
+    })
+
+# === Guardar JSON ===
+with open(output_path, "w") as f:
+    json.dump(temporal_dataset, f)
+
+print(f"✅ Dataset temporal guardado como {output_path} — {len(temporal_dataset)} muestras")
