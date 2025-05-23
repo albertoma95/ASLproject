@@ -1,2 +1,12 @@
+# Ignorar dependencias
+node_modules/
+
+# Ignorar datasets
 dataset/videos
 landmarks_dataset.json
+
+# Otros posibles archivos temporales o del sistema
+.DS_Store
+.env
+dist/
+build/
