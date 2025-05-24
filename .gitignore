@@ -1,2 +1,4 @@
 dataset/videos
+dataset/videos_frases
 landmarks_dataset.json
+modelo_signos.h5
