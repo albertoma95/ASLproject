@@ -1,0 +1,86 @@
+
+import os
+import cv2
+import json
+import mediapipe as mp
+import pandas as pd
+
+# === Configuración ===
+csv_path = "C:/Users/Alberto/Documents/Master/ASLproject/dataset/videos_con_token.csv"
+videos_folder = "C:/Users/Alberto/Documents/Master/ASLproject/dataset/videos_frases"
+output_json = "cnn_lstm_dataset_dos_manos.json"
+frames_per_video = 30
+crop_size = 128  # Tamaño final del recorte
+
+# Inicializar MediaPipe Hands
+mp_hands = mp.solutions.hands
+hands = mp_hands.Hands(static_image_mode=False, max_num_hands=2)
+
+# Leer CSV
+df = pd.read_csv(csv_path)
+total_videos = len(df)
+
+# Dataset final
+dataset = []
+
+for idx, row in df.iterrows():
+    video_path = os.path.join(videos_folder, row["video"])
+    sentence = row["sentence"]
+
+    if not os.path.exists(video_path):
+        continue
+
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        continue
+
+    frames = []
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    interval = max(1, total_frames // frames_per_video)
+    frame_idx = 0
+
+    while len(frames) < frames_per_video and cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+        if frame_idx % interval == 0:
+            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            result = hands.process(image_rgb)
+            h, w, _ = frame.shape
+
+            if result.multi_hand_landmarks:
+                all_x, all_y = [], []
+                for hand_landmarks in result.multi_hand_landmarks:
+                    for lm in hand_landmarks.landmark:
+                        all_x.append(int(lm.x * w))
+                        all_y.append(int(lm.y * h))
+
+                if all_x and all_y:
+                    x1 = max(0, min(all_x) - 20)
+                    y1 = max(0, min(all_y) - 20)
+                    x2 = min(w, max(all_x) + 20)
+                    y2 = min(h, max(all_y) + 20)
+
+                    hand_crop = frame[y1:y2, x1:x2]
+                    hand_crop = cv2.resize(hand_crop, (crop_size, crop_size))
+                    frames.append(hand_crop.tolist())
+        frame_idx += 1
+
+    cap.release()
+
+    if len(frames) == frames_per_video:
+        dataset.append({
+            "frames": frames,
+            "target": sentence
+        })
+
+    # Mostrar progreso
+    if (idx + 1) % 25 == 0 or idx + 1 == total_videos:
+        porcentaje = (idx + 1) / total_videos * 100
+        print(f"📦 Procesado {idx + 1}/{total_videos} ({porcentaje:.2f}%)")
+
+# Guardar JSON
+with open(output_json, "w") as f:
+    json.dump(dataset, f)
+
+print(f"✅ Dataset guardado como {output_json}, total: {len(dataset)} muestras")

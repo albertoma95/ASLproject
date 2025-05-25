@@ -1,4 +1,5 @@
-dataset/videos
 dataset/videos_frases
-landmarks_dataset.json
-modelo_signos.h5
+frases_dataset.json
+modelo_traductor_frases.h5
+models/old/landmarks_dataset.json
+models/old/modelo_signos.h5
