@@ -5,3 +5,4 @@ gunicorn
 numpy
 opencv-python-headless
 mediapipe
+tensorflow
