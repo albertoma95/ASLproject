@@ -1,3 +1,7 @@
+
+dataset/videos_frases
+models/old/landmarks_dataset.json
+models/old/modelo_signos.h5
 # Ignorar dependencias
 node_modules/
 
@@ -9,4 +13,3 @@ landmarks_dataset.json
 .DS_Store
 .env
 dist/
-build/
