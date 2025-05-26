@@ -99,10 +99,13 @@ const WebCameraPage: React.FC = () => {
         formData.append('file', blob, 'capture.png');
 
         try {
-          const response = await fetch('http://localhost:8000/upload/', {
-            method: 'POST',
-            body: formData,
-          });
+          const response = await fetch(
+            'https://aslprojectwebservice.onrender.com/upload/',
+            {
+              method: 'POST',
+              body: formData,
+            }
+          );
           const data = await response.json();
 
           let newText = '';
