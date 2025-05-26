@@ -87,13 +87,14 @@ const WebCameraPage: React.FC = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.drawImage(video, 0, 0, width, height);
-      setIsLoading(true);
 
       canvas.toBlob(async (blob) => {
         if (!blob) {
           setIsLoading(false);
           return;
         }
+        setIsLoading(true);
+
         const formData = new FormData();
         formData.append('file', blob, 'capture.png');
 
@@ -102,10 +103,29 @@ const WebCameraPage: React.FC = () => {
             method: 'POST',
             body: formData,
           });
-          const text = await response.text();
-          setResponseText(text);
+          const data = await response.json();
+
+          let newText = '';
+          if (data.prediction) {
+            newText = `🧠 Traducción: ${data.prediction}`;
+          } else if (data.message) {
+            newText = `ℹ️ ${data.message}`;
+          } else if (data.error) {
+            newText = `❌ Error: ${data.error}`;
+          } else {
+            newText = '⚠️ Respuesta desconocida del servidor.';
+          }
+
+          // Solo actualizar el texto si es diferente al actual
+          setResponseText((current) =>
+            current !== newText ? newText : current
+          );
         } catch (err) {
-          setResponseText('Error en la conexión con el servidor.');
+          console.error('Error en la solicitud:', err);
+          const errorText = 'Error en la conexión con el servidor.';
+          setResponseText((current) =>
+            current !== errorText ? errorText : current
+          );
         } finally {
           setIsLoading(false);
         }
@@ -124,7 +144,6 @@ const WebCameraPage: React.FC = () => {
         </Toolbar>
       </AppBar>
 
-      {/* Contenido principal */}
       <Box flexGrow={1}>
         <Container maxWidth="lg">
           <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
@@ -229,7 +248,7 @@ const WebCameraPage: React.FC = () => {
         </Container>
       </Box>
 
-      {/* Footer fijo abajo */}
+      {/* Footer */}
       <Box
         component="footer"
         sx={{
